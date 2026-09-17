@@ -1,0 +1,35 @@
+# Ship Intelligent Monitoring System - AI Service Dependencies
+# Python 3.8+ compatible
+
+# Core dependencies
+numpy>=1.20.0,<1.25.0  # 1.24+ requires Python 3.9+
+opencv-python>=4.5.0
+PyYAML>=6.0
+
+# Deep learning & Computer vision
+# torch>=1.9.0
+# torchvision>=0.10.0
+# ultralytics>=8.0.0  # YOLO
+
+# Model downloading
+# huggingface-hub>=0.10.0
+
+# Multi-object tracking (optional, fallback available)
+# boxmot>=10.0.0  # ByteTrack implementation
+
+# Web framework & API
+fastapi>=0.95.0
+uvicorn[standard]>=0.20.0
+pydantic>=2.0.0
+
+# Database
+aiosqlite>=0.17.0
+sqlalchemy[asyncio]>=1.4.0
+
+# Security
+cryptography>=38.0.0
+
+# Development & Testing
+pytest>=7.0.0
+pytest-asyncio>=0.20.0
+httpx>=0.23.0  # For testing FastAPI
