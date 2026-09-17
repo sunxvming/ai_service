@@ -53,10 +53,12 @@ class SophonVideoDecoder:
         self._reconnect_count = 0
         self._last_frame: Optional[np.ndarray] = None
         self._last_frame_time: float = 0.0
-
+        self.read_flag = True
         # --- Performance: pre-allocated reusable objects ---
         self._bmimg = None      # will be allocated once after first successful read
 
+
+        self.setup_decoder_env()
 
     def setup_decoder_env(self) -> None:
         import sophon.sail as sail
@@ -136,27 +138,17 @@ class SophonVideoDecoder:
                 if self._bmimg is None:
                     self._bmimg = sail.BMImage()
 
-                t0 = time.perf_counter()
                 ret = self._decoder.read(self._handle, self._bmimg)
-                t1 = time.perf_counter()
-                read_cost_ms = (t1 - t0) * 1000
 
                 if ret != 0:
                     self.logger.warning(f"Sophon decoder read failed (ret={ret}) for {self.rtsp_url}")
                     if not self._reconnect():
                         break
                     continue
-
-                t2 = time.perf_counter()
-                self._last_frame = self._bmimg.asmat()
-                t3 = time.perf_counter()
-                asmat_cost_ms = (t3 - t2) * 1000
-
-                self.logger.info(
-                    f"解码耗时统计 - read: {read_cost_ms:.2f} ms, asmat: {asmat_cost_ms:.2f} ms"
-                )
-                self._last_frame_time = time.perf_counter()
-                self._reconnect_count = 0
+                self.read_flag = not self.read_flag  # Toggle read_flag to indicate a new frame is available
+                if self.read_flag:
+                    self._last_frame = self._bmimg.asmat()  # Directly get BGR uint8 array
+                    self._last_frame_time = time.perf_counter()
             except Exception as e:
                 self.logger.error(f"Sophon decode loop error for {self.rtsp_url}: {e}")
                 if not self._reconnect():
