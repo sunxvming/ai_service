@@ -120,7 +120,7 @@ class SophonVideoDecoder:
             self._handle = sail.Handle(self.dev_id)
             self._bmcv = sail.Bmcv(self._handle)
 
-            self._decoder = sail.Decoder(self.rtsp_url, True, self.dev_id, extra_frame_buffer_num=5)
+            self._decoder = sail.Decoder(self.rtsp_url, True, self.dev_id)
             if not self._decoder.is_opened():
                 self.logger.error(f"Sophon decoder failed to open: {self.rtsp_url}")
                 self._decoder = None
