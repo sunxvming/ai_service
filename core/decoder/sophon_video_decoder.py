@@ -136,7 +136,10 @@ class SophonVideoDecoder:
                 if self._bmimg is None:
                     self._bmimg = sail.BMImage()
 
+                t0 = time.perf_counter()
                 ret = self._decoder.read(self._handle, self._bmimg)
+                t1 = time.perf_counter()
+                read_cost_ms = (t1 - t0) * 1000
 
                 if ret != 0:
                     self.logger.warning(f"Sophon decoder read failed (ret={ret}) for {self.rtsp_url}")
@@ -144,7 +147,14 @@ class SophonVideoDecoder:
                         break
                     continue
 
-                self._last_frame = self._bmimg.asmat()  # Directly get BGR uint8 array
+                t2 = time.perf_counter()
+                self._last_frame = self._bmimg.asmat()
+                t3 = time.perf_counter()
+                asmat_cost_ms = (t3 - t2) * 1000
+
+                self.logger.info(
+                    f"解码耗时统计 - read: {read_cost_ms:.2f} ms, asmat: {asmat_cost_ms:.2f} ms"
+                )
                 self._last_frame_time = time.perf_counter()
                 self._reconnect_count = 0
             except Exception as e:
