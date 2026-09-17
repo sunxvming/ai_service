@@ -68,25 +68,11 @@ class SophonVideoDecoder:
     def setup_decoder_env(self) -> None:
         import sophon.sail as sail
 
-        # 1. 网络传输与连接
-        sail.set_decoder_env("rtsp_transport", "tcp")      # 使用TCP，避免UDP丢包导致花屏或断流
-        sail.set_decoder_env("stimeout", "10000000")       # 10秒超时，避免网络波动时过早断开
-
-        # 2. 解码缓存与性能 (核心)
         sail.set_decoder_env("extra_frame_buffer_num", "3") # 关键：大幅降低帧缓存，避免VPU内存溢出
         sail.set_decoder_env("refcounted_frames", "0")      # 由Decoder自动管理图像释放，简化代码
 
-        # 3. 低延迟优化
         sail.set_decoder_env("low_delay", "1")             # 启用低延迟解码模式
-        sail.set_decoder_env("nobuffer", "1")              # 启用无缓冲模式，进一步降低延迟
-
-        # 4. 流解析优化 (降低首帧延迟)
-        sail.set_decoder_env("probesize", "102400")        # 减小探测大小，加快拉流速度
-        sail.set_decoder_env("analyzeduration", "1000000") # 减小分析时长，加快启动
-
-        # 5. 监控场景可选优化
-        sail.set_decoder_env("skip_non_idr", "2")          # 跳过非参考帧，降低解码负载 (根据监控需求决定)
-
+ 
     def start(self) -> bool:
         if self._running:
             self.logger.warning(f"Sophon decoder already running for {self.rtsp_url}")
