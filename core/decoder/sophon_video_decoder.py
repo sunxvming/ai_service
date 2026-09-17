@@ -65,7 +65,7 @@ class SophonVideoDecoder:
 
         self.setup_decoder_env()
 
-    def setup_decoder_env():
+    def setup_decoder_env(self) -> None:
         import sophon.sail as sail
 
         # 1. 网络传输与连接
