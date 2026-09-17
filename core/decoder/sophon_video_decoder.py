@@ -44,11 +44,9 @@ class SophonVideoDecoder:
         self.buffer_size = buffer_size
         self.reconnect_interval = reconnect_interval
         self.max_reconnect_attempts = max_reconnect_attempts
-        self.rtsp_transport = rtsp_transport.lower()
         self.logger = get_logger()
 
         self._handle = None
-        self._bmcv = None
         self._decoder = None
         self._running = False
         self._thread: Optional[Thread] = None
@@ -58,12 +56,7 @@ class SophonVideoDecoder:
 
         # --- Performance: pre-allocated reusable objects ---
         self._bmimg = None      # will be allocated once after first successful read
-        self._bgr_img = None
-        self._tensor = None
-        self._frame_width = 0
-        self._frame_height = 0
 
-        self.setup_decoder_env()
 
     def setup_decoder_env(self) -> None:
         import sophon.sail as sail
@@ -102,10 +95,7 @@ class SophonVideoDecoder:
     def _connect(self) -> bool:
         try:
             import sophon.sail as sail
-            t0 = time.perf_counter()
             self._handle = sail.Handle(self.dev_id)
-            self._bmcv = sail.Bmcv(self._handle)
-
             self._decoder = sail.Decoder(self.rtsp_url, True, self.dev_id)
             if not self._decoder.is_opened():
                 self.logger.error(f"Sophon decoder failed to open: {self.rtsp_url}")
@@ -114,8 +104,6 @@ class SophonVideoDecoder:
 
             self._reconnect_count = 0
             self.logger.info(f"Sophon decoder connected to: {self.rtsp_url}")
-            t1 = time.perf_counter()
-            self.logger.info(f"\tSophon decoder initialized in {1000*(t1-t0):.0f}ms for {self.rtsp_url}")
             return True
 
         except Exception as e:
@@ -131,11 +119,8 @@ class SophonVideoDecoder:
         finally:
             self._decoder = None
             self._handle = None
-            self._bmcv = None
-            # Free reusable objects
             self._bmimg = None
-            self._bgr_img = None
-            self._tensor = None
+
 
     def _decode_loop(self) -> None:
         import sophon.sail as sail
@@ -151,9 +136,7 @@ class SophonVideoDecoder:
                 if self._bmimg is None:
                     self._bmimg = sail.BMImage()
 
-                t0 = time.perf_counter()
                 ret = self._decoder.read(self._handle, self._bmimg)
-                t1 = time.perf_counter()
 
                 if ret != 0:
                     self.logger.warning(f"Sophon decoder read failed (ret={ret}) for {self.rtsp_url}")
@@ -161,16 +144,9 @@ class SophonVideoDecoder:
                         break
                     continue
 
-                # Convert with reuse of bgr_img and tensor
-                frame = self._bmimage_to_numpy_reuse(self._bmimg)
-                t2 = time.perf_counter()
-
-                if frame is not None:
-                    self._last_frame = frame
-                    self._last_frame_time = time.perf_counter()
-                    self._reconnect_count = 0
-                t3 = time.perf_counter()
-                # print(f"Sophon decode loop: read={1000*(t1-t0):.0f}ms, convert={1000*(t2-t1):.0f}ms, total={1000*(t3-t0):.0f}ms")
+                self._last_frame = self._bmimg.asmat()  # Directly get BGR uint8 array
+                self._last_frame_time = time.perf_counter()
+                self._reconnect_count = 0
             except Exception as e:
                 self.logger.error(f"Sophon decode loop error for {self.rtsp_url}: {e}")
                 if not self._reconnect():
@@ -182,7 +158,7 @@ class SophonVideoDecoder:
             # 如果 arr 是多维且带 batch 维度？asmat 文档明确返回 (H,W,3)，无 batch
             return arr
         except Exception as e:
-            print(f"asmat error: {e}")
+            self.logger.error(f"asmat error: {e}")
             return None
 
     def _reconnect(self) -> bool:
